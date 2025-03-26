@@ -1,3 +1,18 @@
+#include "ESP8266WiFi.h"
+#include "WiFiClient.h"
+//===============================================
+// WiFi config
+//===============================================
+const char* apName = "white_egg";
+const char* apPassword = "00000000";
+IPAddress staticIP(192,168,128,1);
+IPAddress gateway(192,168,128,1);
+IPAddress subnet(255,255,255,0);
+
+//===============================================
+// Server
+//===============================================
+WiFiServer server(80);
 // I2C device class (I2Cdev) demonstration Arduino sketch for MPU6050 class using DMP (MotionApps v2.0)
 // 6/21/2012 by Jeff Rowberg <jeff@rowberg.net>
 // Updates should (hopefully) always be available at https://github.com/jrowberg/i2cdevlib
@@ -162,6 +177,9 @@ void IRAM_ATTR dmpDataReady() {
 // ===                      INITIAL SETUP                       ===
 // ================================================================
 
+#define button D6
+#define volume A0
+
 void setup() {
     // join I2C bus (I2Cdev library doesn't do this automatically)
     #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
@@ -175,7 +193,26 @@ void setup() {
     // (115200 chosen because it is required for Teapot Demo output, but it's
     // really up to you depending on your project)
     Serial.begin(115200);
-    while (!Serial); // wait for Leonardo enumeration, others continue immediately
+    Serial.println();
+
+    WiFi.mode(WIFI_AP);
+
+    Serial.print("Setting soft-AP configuration ... ");
+    Serial.println(WiFi.softAPConfig(staticIP, gateway, subnet) ? "Ready" : "Failed!");
+
+    Serial.print("Setting soft-AP ... ");
+    Serial.println(WiFi.softAP(apName, apPassword) ? "Ready" : "Failed!");
+
+    Serial.print("Soft-AP IP address = ");
+    Serial.println(WiFi.softAPIP());
+
+    Serial.printf("Stations connected to soft-AP = %d\n", WiFi.softAPgetStationNum());
+
+    // Initialize server
+    server.begin();
+    pinMode(volume, INPUT);
+    pinMode(button, INPUT);
+    //while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
     // NOTE: 8MHz or slower host processors, like the Teensy @ 3.3V or Arduino
     // Pro Mini running at 3.3V, cannot handle this baud rate reliably due to
@@ -194,9 +231,9 @@ void setup() {
 
     // wait for ready
     Serial.println(F("\nSend any character to begin DMP programming and demo: "));
-    while (Serial.available() && Serial.read()); // empty buffer
-    while (!Serial.available());                 // wait for data
-    while (Serial.available() && Serial.read()); // empty buffer again
+    //while (Serial.available() && Serial.read()); // empty buffer
+    //while (!Serial.available());                 // wait for data
+    //while (Serial.available() && Serial.read()); // empty buffer again
 
     // load and configure the DMP
     Serial.println(F("Initializing DMP..."));
@@ -254,6 +291,48 @@ void setup() {
 void loop() {
     // if programming failed, don't try to do anything
     if (!dmpReady) return;
+    // put your main code here, to run repeatedly:
+    WiFiClient client = server.accept();
+    if (!client){
+      Serial.println("Wait for client...");
+      delay(100);
+      return ;
+    }
+
+    Serial.println("A new client is connected!");
+
+    String data = "";
+    while (client.connected()) {
+      while (client.available()>0) {
+        data += char(client.read());
+      }
+      if (data != ""){
+        Serial.println(data);
+        //client.print("Hi! I am server~");
+        mpu.dmpGetCurrentFIFOPacket(fifoBuffer);
+        mpu.dmpGetQuaternion(&q, fifoBuffer);
+        mpu.dmpGetGravity(&gravity, &q);
+        mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+        bool b = digitalRead(button);
+        int v = analogRead(volume);
+        client.print("B: ");
+        client.print(b);
+        client.print(", V: ");
+        client.print(v);
+        client.print('\t');
+        client.print("ypr\t");
+        client.print(ypr[0] * 180/M_PI);
+        client.print("\t");
+        client.print(ypr[1] * 180/M_PI);
+        client.print("\t");
+        client.println(ypr[2] * 180/M_PI);
+        data = "";
+      }
+      delay(5);
+    }
+    client.stop();
+    Serial.println("Client disconnected");
+    return;
     // read a packet from FIFO
     if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) { // Get the Latest packet 
         #ifdef OUTPUT_READABLE_QUATERNION
@@ -286,6 +365,13 @@ void loop() {
             mpu.dmpGetQuaternion(&q, fifoBuffer);
             mpu.dmpGetGravity(&gravity, &q);
             mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+            bool b = digitalRead(button);
+            int v = analogRead(volume);
+            Serial.print("B: ");
+            Serial.print(b);
+            Serial.print(", V: ");
+            Serial.print(v);
+            Serial.print('\t');
             Serial.print("ypr\t");
             Serial.print(ypr[0] * 180/M_PI);
             Serial.print("\t");

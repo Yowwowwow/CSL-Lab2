@@ -10,8 +10,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 	while True:
 		s.sendall(b'Hello, world')
 		try:
-			data = s.recv(1024)
-			print('Received', repr(data))
+			data = s.recv(1024).decode()
+			print(data, end="")
 		except KeyboardInterrupt:
 			exit()
 		except:
