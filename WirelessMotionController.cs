@@ -17,6 +17,7 @@ public class WirelessMotionController : MonoBehaviour
     float baseYaw;
     bool initYaw = false;
     public int vvv;
+    bool working = true;
 
     private void Awake() {
         socketClient = new SocketClient(hostIP, port);
@@ -31,13 +32,23 @@ public class WirelessMotionController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        vvv = int.Parse(socketClient.mes.Split('\t')[0].Split(' ')[3]);
+        if (!working) return;
+        try
+        {
+            vvv = int.Parse(socketClient.mes.Split('\t')[0].Split(' ')[3]);
+        }
+        catch (System.Exception)
+        {
+            return;
+        }
         string mes = socketClient.mes;
         move = mes[3] - '0';
         if (!initYaw && move == 1) { baseYaw = float.Parse(mes.Split('\t')[2].Split(' ')[0]); initYaw = true; }
         if (initYaw)
         {
             yaw = float.Parse(mes.Split('\t')[2].Split(' ')[0]) - baseYaw;
+            if (yaw < -180) yaw += 360;
+            else if (yaw > 180) yaw -= 360;
         }
     }
 

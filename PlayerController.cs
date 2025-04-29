@@ -70,17 +70,21 @@ public class PlayerController : MonoBehaviour
     //Steer the kart's front wheels
     private void Steer()
     {
-        if (cont.yaw <= -10) //Rotate left when press A
+        print(cont.yaw);
+        float lower = 10, upper = 90;
+        float x = (Mathf.Abs(cont.yaw) - lower) / (upper - lower);
+        if (x > 1) x = 1;
+        if (cont.yaw <= -lower) //Rotate left when press A
         {
-            RotateVisual(maxRotationAngle, rotationSpeed * 1f);
+            RotateVisual(maxRotationAngle, rotationSpeed * 1f * x);
         }
-        else if (cont.yaw >= 10) //Rotate right when press D
+        else if (cont.yaw >= lower) //Rotate right when press D
         {
-            RotateVisual(-maxRotationAngle, rotationSpeed * 1f);
+            RotateVisual(-maxRotationAngle, rotationSpeed * 1f * x);
         }
         else //Rotate back when no key's pressed
         {
-            RotateVisual(0, rotationSpeed * 3f);
+            RotateVisual(0, rotationSpeed * 0.1f);
         }
     }
 

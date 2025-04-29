@@ -34,7 +34,7 @@ public class SocketClient
                         }
                         int length = socketClient.Receive(data);
                         mes = Encoding.UTF8.GetString(data, 0, length).Split("\n")[1];
-                        Debug.Log("Recieve message: " + mes);
+                        //Debug.Log("Recieve message: " + mes);
                         // */
                     }
                 } catch (Exception ex) {
